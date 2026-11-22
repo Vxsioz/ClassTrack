@@ -1,0 +1,78 @@
+namespace ClassTrack.UI.Controls
+{
+    /// <summary>A flat, hairline-separated table with a subtle row hover. Read-only, no selection highlight.</summary>
+    public class DarkGrid : DataGridView
+    {
+        public DarkGrid()
+        {
+            DoubleBuffered = true;
+            Dock = DockStyle.Fill;
+            BackgroundColor = Theme.Bg;
+            BorderStyle = BorderStyle.None;
+            CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
+            GridColor = Theme.Border;
+
+            AllowUserToAddRows = false;
+            AllowUserToDeleteRows = false;
+            AllowUserToResizeRows = false;
+            ReadOnly = true;
+            RowHeadersVisible = false;
+            MultiSelect = false;
+            SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+
+            EnableHeadersVisualStyles = false;
+            ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
+            ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            ColumnHeadersHeight = Theme.Caption.Height + 22;
+            RowTemplate.Height = Theme.Body.Height + 26;
+
+            var header = ColumnHeadersDefaultCellStyle;
+            header.BackColor = Theme.Bg;
+            header.ForeColor = Theme.TextMuted;
+            header.Font = Theme.Caption;
+            header.SelectionBackColor = Theme.Bg;
+            header.SelectionForeColor = Theme.TextMuted;
+            header.Padding = new Padding(12, 0, 0, 0);
+
+            var cells = DefaultCellStyle;
+            cells.BackColor = Theme.Bg;
+            cells.ForeColor = Theme.Text;
+            cells.Font = Theme.Body;
+            cells.SelectionBackColor = Theme.Bg;
+            cells.SelectionForeColor = Theme.Text;
+            cells.Padding = new Padding(12, 0, 0, 0);
+
+            // Hover highlight: set on the row, cleared on leave.
+            CellMouseEnter += (_, e) => { if (e.RowIndex >= 0) Rows[e.RowIndex].DefaultCellStyle.BackColor = Theme.Surface; };
+            CellMouseLeave += (_, e) => { if (e.RowIndex >= 0 && e.RowIndex < Rows.Count) Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.Empty; };
+
+            SelectionChanged += (_, _) => ClearSelection();
+        }
+
+        /// <summary>Width that fits a header's text plus room for padding and a sort arrow.</summary>
+        public static int HeaderWidth(string text, int extra = 44) =>
+            TextRenderer.MeasureText(text, Theme.Caption).Width + extra;
+
+        /// <summary>A text-link action column ("Edit", "Delete"...), clicked via CellContentClick.</summary>
+        public static DataGridViewLinkColumn LinkColumn(string name, string text, Color color, string header = "")
+        {
+            return new DataGridViewLinkColumn
+            {
+                Name = name,
+                HeaderText = header,
+                Text = text,
+                UseColumnTextForLinkValue = true,
+                LinkColor = color,
+                ActiveLinkColor = color,
+                VisitedLinkColor = color,
+                TrackVisitedState = false,
+                LinkBehavior = LinkBehavior.HoverUnderline,
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
+                Width = TextRenderer.MeasureText(text, Theme.Body).Width + 30,
+                Resizable = DataGridViewTriState.False,
+                SortMode = DataGridViewColumnSortMode.NotSortable
+            };
+        }
+    }
+}
