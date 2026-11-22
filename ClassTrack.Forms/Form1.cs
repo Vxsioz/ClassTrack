@@ -634,8 +634,7 @@ namespace ClassTrack
             {
                 MessageBox.Show(this,
                     "Could not complete the database operation.\n\n" +
-                    "Make sure SQL Server LocalDB is running and the ClassTrackDb database exists " +
-                    "(created by the ClassTrack.Web app: dotnet ef database update).\n\n" +
+                    "Make sure SQL Server Express (.\\SQLEXPRESS) is running and the ClassTrackDb database exists.\n\n" +
                     ex.GetBaseException().Message,
                     "Database error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;

@@ -609,7 +609,7 @@ namespace ClassTrack
         private void RefreshCurrentView()
         {
             if (DashboardVisible) LoadDashboard();
-            else LoadGrid();
+            else _ = LoadGrid();
         }
 
         // =====================================================================
@@ -636,6 +636,22 @@ namespace ClassTrack
             }
         }
 
+        private async Task<bool> TryDbAsync(Func<Task> action)
+        {
+            try
+            {
+                await action();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this,
+                    "Could not complete the database operation.\n\n" + ex.GetBaseException().Message,
+                    "Database error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+        }
+
         private Student? FindStudent(int id)
         {
             Student? found = null;
@@ -650,7 +666,7 @@ namespace ClassTrack
             {
                 MessageBox.Show(this, "That student no longer exists.", "Not found",
                     MessageBoxButtons.OK, MessageBoxIcon.Information);
-                LoadGrid();
+                _ = LoadGrid();
             }
             return found;
         }
@@ -713,19 +729,19 @@ namespace ClassTrack
         // =====================================================================
 
         /// <summary>Loads the current page using the current search term and sort order.</summary>
-        private void LoadGrid()
+        private async Task LoadGrid()
         {
             var rows = new List<Student>();
             int total = 0;
 
-            if (!TryDb(() =>
+            if (!await TryDbAsync(async () =>
             {
                 using var db = new AppDbContext();
                 IQueryable<Student> query = db.Students.AsNoTracking();
 
                 if (!string.IsNullOrWhiteSpace(appliedTerm))
                 {
-                    string t = appliedTerm.Trim();
+                    string t = appliedTerm!.Trim();
                     bool isId = int.TryParse(t, out int id);
                     query = query.Where(s =>
                         (isId && s.Id == id) ||
@@ -733,7 +749,7 @@ namespace ClassTrack
                         s.Surname.Contains(t));
                 }
 
-                total = query.Count();
+                total = await query.CountAsync();
                 totalPages = Math.Max(1, (int)Math.Ceiling(total / (double)PageSize));
                 if (page > totalPages) page = totalPages;
                 if (page < 1) page = 1;
@@ -749,7 +765,7 @@ namespace ClassTrack
                     _ => query.OrderBy(s => s.Id)
                 };
 
-                rows = ordered.Skip((page - 1) * PageSize).Take(PageSize).ToList();
+                rows = await ordered.Skip((page - 1) * PageSize).Take(PageSize).ToListAsync();
             }))
                 return;
 
@@ -798,14 +814,14 @@ namespace ClassTrack
         private void GoToPage(int newPage)
         {
             page = Math.Clamp(newPage, 1, totalPages);
-            LoadGrid();
+            _ = LoadGrid();
         }
 
         private void Search()
         {
             appliedTerm = txtSearch.Text;
             page = 1;            // new search starts on page 1; sort order is kept
-            LoadGrid();
+            _ = LoadGrid();
         }
 
         private void ShowAll()
@@ -813,7 +829,7 @@ namespace ClassTrack
             txtSearch.Clear();
             appliedTerm = null;
             page = 1;            // sort order is kept
-            LoadGrid();
+            _ = LoadGrid();
         }
 
         private void Grid_ColumnHeaderMouseClick(object? sender, DataGridViewCellMouseEventArgs e)
@@ -836,7 +852,7 @@ namespace ClassTrack
             }
 
             page = 1;                               // search term is kept
-            LoadGrid();
+            _ = LoadGrid();
         }
 
         // =====================================================================
@@ -889,7 +905,7 @@ namespace ClassTrack
                             db.SaveChanges();
                         });
 
-                        if (saved) LoadGrid();
+                        if (saved) _ = LoadGrid();
                     }
                     break;
 
@@ -908,7 +924,7 @@ namespace ClassTrack
                         db.SaveChanges();
                     });
 
-                    if (deleted) LoadGrid();   // page is clamped if the last row of a page was deleted
+                    if (deleted) _ = LoadGrid();   // page is clamped if the last row of a page was deleted
                     break;
             }
         }
