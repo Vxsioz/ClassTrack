@@ -23,6 +23,18 @@ namespace ClassTrack
             ShowView(dashboard, navDashboard, "Dashboard");
         }
 
+        /// <summary>Keeps the window inside the screen's usable area (above the taskbar) on smaller screens.</summary>
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            var area = Screen.FromControl(this).WorkingArea;
+            int width = Math.Min(Width, area.Width), height = Math.Min(Height, area.Height);
+            Size = new Size(width, height);
+            Location = new Point(
+                Math.Clamp(Left, area.Left, Math.Max(area.Left, area.Right - width)),
+                Math.Clamp(Top, area.Top, Math.Max(area.Top, area.Bottom - height)));
+        }
+
         private void BuildUi()
         {
             Text = "ClassTrack";
@@ -35,11 +47,13 @@ namespace ClassTrack
             content.Controls.Add(students);
             content.Controls.Add(details);
             dashboard.ViewAllRequested += (_, _) => ShowView(students, navStudents, "Students");
-            students.StudentRequested += async (_, id) =>
+            EventHandler<int> openDetails = async (_, id) =>
             {
                 ShowView(details, navStudents, "Student details", refresh: false);
                 await details.ShowStudentAsync(id);
             };
+            students.StudentRequested += openDetails;
+            dashboard.StudentRequested += openDetails;
             details.BackRequested += (_, _) => ShowView(students, navStudents, "Students");
 
             // ---------- Sidebar ----------

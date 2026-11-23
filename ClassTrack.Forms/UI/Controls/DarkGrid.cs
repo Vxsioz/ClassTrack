@@ -25,7 +25,7 @@ namespace ClassTrack.UI.Controls
             ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
             ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
             ColumnHeadersHeight = Theme.Caption.Height + 22;
-            RowTemplate.Height = Theme.Body.Height + 26;
+            RowTemplate.Height = Theme.Body.Height + 22;
 
             var header = ColumnHeadersDefaultCellStyle;
             header.BackColor = Theme.Bg;
@@ -48,6 +48,19 @@ namespace ClassTrack.UI.Controls
             CellMouseLeave += (_, e) => { if (e.RowIndex >= 0 && e.RowIndex < Rows.Count) Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.Empty; };
 
             SelectionChanged += (_, _) => ClearSelection();
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            Theme.ApplyDarkScrollbars(Handle);
+            // The grid's scrollbars are child controls with their own handles.
+            foreach (Control child in Controls)
+            {
+                if (child is not ScrollBar bar) continue;
+                if (bar.IsHandleCreated) Theme.ApplyDarkScrollbars(bar.Handle);
+                else bar.HandleCreated += (_, _) => Theme.ApplyDarkScrollbars(bar.Handle);
+            }
         }
 
         /// <summary>Width that fits a header's text plus room for padding and a sort arrow.</summary>

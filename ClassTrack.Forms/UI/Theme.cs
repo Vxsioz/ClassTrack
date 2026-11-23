@@ -54,6 +54,16 @@ namespace ClassTrack.UI
             catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException) { }
         }
 
+        [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)]
+        private static extern int SetWindowTheme(IntPtr hwnd, string? subAppName, string? subIdList);
+
+        /// <summary>Gives a control's scrollbars the dark Windows look (skipped silently if unsupported).</summary>
+        public static void ApplyDarkScrollbars(IntPtr handle)
+        {
+            try { SetWindowTheme(handle, "DarkMode_Explorer", null); }
+            catch (Exception ex) when (ex is DllNotFoundException or EntryPointNotFoundException) { }
+        }
+
         public static void ApplyDarkTitleBar(IntPtr handle)
         {
             SetDwm(handle, 20, 1);                      // use dark mode

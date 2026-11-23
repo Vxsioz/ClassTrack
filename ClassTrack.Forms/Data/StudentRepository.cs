@@ -116,7 +116,7 @@ namespace ClassTrack.Data
             var byCourse = await db.Students.AsNoTracking()
                 .GroupBy(s => s.Course ?? "")
                 .Select(g => new { Course = g.Key, Count = g.Count() })
-                .OrderByDescending(x => x.Count).ThenBy(x => x.Course)
+                .OrderBy(x => x.Course == "").ThenByDescending(x => x.Count).ThenBy(x => x.Course)   // "Unassigned" last
                 .ToListAsync();
 
             var byYear = await db.Students.AsNoTracking()
