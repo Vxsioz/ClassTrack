@@ -27,6 +27,9 @@ namespace ClassTrack.UI.Controls
             items = data;
             emptyText = empty;
             total = data.Sum(i => i.Count);
+            // The charts are drawn, so describe them for screen readers (and UI tests): "BSCS 2, Unassigned 1".
+            AccessibleRole = AccessibleRole.Chart;
+            AccessibleDescription = data.Count == 0 ? empty : string.Join(", ", data.Select(i => $"{i.Label} {i.Count}"));
             reveal.Set(0);
             reveal.To(1, 520);   // the ring sweeps in
             Invalidate();

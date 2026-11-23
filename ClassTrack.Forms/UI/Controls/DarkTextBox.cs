@@ -36,6 +36,10 @@ namespace ClassTrack.UI.Controls
             Click += (_, _) => box.Focus();
         }
 
+        /// <summary>The field's name for screen readers and UI automation (applied to the inner text box too).</summary>
+        [System.ComponentModel.Browsable(false), System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+        public string Caption { set { AccessibleName = value; box.AccessibleName = value; } }
+
         /// <summary>The inner TextBox, for key events and focus.</summary>
         public TextBox Inner => box;
 

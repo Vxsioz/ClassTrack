@@ -102,6 +102,10 @@ namespace ClassTrack.Views
             row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140F));
             row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
+            txtSearch.Caption = "Directory search";
+            cboCourse.AccessibleName = "Course filter";
+            cboYear.AccessibleName = "Year filter";
+            grid.AccessibleName = "Students table";
             txtSearch.LeftIcon = IconKind.Search;
             txtSearch.PlaceholderText = "Search by ID, name, email or course";
             txtSearch.Anchor = AnchorStyles.Left | AnchorStyles.Right;

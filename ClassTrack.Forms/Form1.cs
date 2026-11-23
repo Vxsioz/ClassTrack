@@ -129,6 +129,7 @@ namespace ClassTrack
             crumbs.Controls.Add(lblCrumb);
             crumbs.Controls.Add(lblPageTitle);
 
+            txtGlobalSearch.Caption = "Search students";
             txtGlobalSearch.LeftIcon = IconKind.Search;
             txtGlobalSearch.PlaceholderText = "Search students";
             txtGlobalSearch.Anchor = AnchorStyles.Left | AnchorStyles.Right;

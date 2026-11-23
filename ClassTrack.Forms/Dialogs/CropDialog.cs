@@ -16,7 +16,7 @@ namespace ClassTrack
 
         private readonly CropControl crop = new() { Size = new Size(CropViewSize, CropViewSize), Margin = Padding.Empty };
         private readonly DarkSlider slider = new() { Dock = DockStyle.Fill };
-        private readonly GlassPicture preview = new() { Size = new Size(PreviewSize, PreviewSize), Margin = Padding.Empty, BackColor = Color.Transparent };
+        private readonly GlassPicture preview = new() { AccessibleName = "Crop preview", Size = new Size(PreviewSize, PreviewSize), Margin = Padding.Empty, BackColor = Color.Transparent };
         private readonly System.Windows.Forms.Timer previewTimer = new() { Interval = 40 };
         private bool previewDirty = true;
         private bool syncingZoom;

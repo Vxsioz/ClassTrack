@@ -72,6 +72,7 @@ namespace ClassTrack.UI.Controls
         {
             return new DataGridViewLinkColumn
             {
+                CellTemplate = new ActionLinkCell(),
                 Name = name,
                 HeaderText = header,
                 Text = text,
@@ -86,6 +87,34 @@ namespace ClassTrack.UI.Controls
                 Resizable = DataGridViewTriState.False,
                 SortMode = DataGridViewColumnSortMode.NotSortable
             };
+        }
+
+        /// <summary>
+        /// A link cell that tells screen readers what it does and to whom ("Delete Rafael Carlos"),
+        /// instead of the default "Row 3" that made View, Edit and Delete indistinguishable.
+        /// </summary>
+        private sealed class ActionLinkCell : DataGridViewLinkCell
+        {
+            protected override AccessibleObject CreateAccessibilityInstance() => new Accessible(this);
+
+            private sealed class Accessible : DataGridViewCellAccessibleObject
+            {
+                public Accessible(DataGridViewCell owner) : base(owner) { }
+
+                public override AccessibleRole Role => AccessibleRole.Link;
+
+                public override string? Name
+                {
+                    get
+                    {
+                        if (Owner is not { OwningColumn: DataGridViewLinkColumn column, OwningRow: { } row }) return base.Name;
+                        string who = string.Join(" ", new[] { "colFirst", "colSurname" }
+                            .Where(c => row.DataGridView?.Columns.Contains(c) == true)
+                            .Select(c => row.Cells[c].Value?.ToString()));
+                        return $"{column.Text} {who}".Trim();
+                    }
+                }
+            }
         }
     }
 }

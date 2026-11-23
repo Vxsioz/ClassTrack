@@ -35,6 +35,8 @@ namespace ClassTrack.Views
 
         public DashboardView()
         {
+            byCourse.AccessibleName = "Students by course";
+            byYear.AccessibleName = "Students by year level";
             Controls.Add(page);
             page.AddRow(BuildWelcome());
             page.AddRow(BuildOverview());
@@ -175,6 +177,7 @@ namespace ClassTrack.Views
                     $"ID {s.Id}  ·  {s.Course ?? "No course"}", s.YearLevel == null ? "—" : $"Year {s.YearLevel}", avatar));
             }
             recent.SetRows(rows, "No students yet. Add one to see them here.");
+            recent.AccessibleDescription = string.Join("; ", rows.Select(r => $"{r.Name}, {r.Detail}, {r.Year}"));
             page.Fit();
         }
     }

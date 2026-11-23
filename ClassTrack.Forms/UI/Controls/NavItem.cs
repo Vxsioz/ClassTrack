@@ -11,6 +11,8 @@ namespace ClassTrack.UI.Controls
         public NavItem(string text, IconKind icon)
         {
             Text = text;
+            AccessibleName = text;
+            AccessibleRole = AccessibleRole.PushButton;
             this.icon = icon;
             Font = Theme.Body;
             Cursor = Cursors.Hand;

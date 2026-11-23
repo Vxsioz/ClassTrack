@@ -36,6 +36,8 @@ namespace ClassTrack.UI.Controls
                      ControlStyles.Selectable | ControlStyles.SupportsTransparentBackColor, true);
             TabStop = true;
             Cursor = Cursors.SizeAll;
+            AccessibleName = "Crop area";
+            AccessibleRole = AccessibleRole.Graphic;
             BackColor = Color.Transparent;
         }
 

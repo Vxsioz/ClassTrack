@@ -25,6 +25,7 @@ namespace ClassTrack.UI.Controls
                      ControlStyles.ResizeRedraw | ControlStyles.SupportsTransparentBackColor | ControlStyles.Selectable, true);
             BackColor = Color.Transparent;
             TabStop = true;
+            AccessibleName = "Recent students";
             Margin = Padding.Empty;
             Dock = DockStyle.Fill;
             Cursor = Cursors.Default;

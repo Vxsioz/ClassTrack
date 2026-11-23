@@ -77,6 +77,7 @@ namespace ClassTrack.Views
             text.Controls.Add(lblId);
             text.Controls.Add(chips);
 
+            picture.AccessibleName = "Student picture";
             picture.Anchor = AnchorStyles.Left;
             row.Controls.Add(picture, 0, 0);
             row.Controls.Add(text, 1, 0);

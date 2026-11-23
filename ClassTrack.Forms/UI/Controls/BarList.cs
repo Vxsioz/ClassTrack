@@ -31,6 +31,9 @@ namespace ClassTrack.UI.Controls
             items = data;
             emptyText = empty;
             total = data.Sum(i => i.Count);
+            // The charts are drawn, so describe them for screen readers (and UI tests): "BSCS 2, Unassigned 1".
+            AccessibleRole = AccessibleRole.Chart;
+            AccessibleDescription = data.Count == 0 ? empty : string.Join(", ", data.Select(i => $"{i.Label} {i.Count}"));
             int rows = data.Count == 0 ? 1 : Math.Min(data.Count, MaxRows) + (data.Count > MaxRows ? 1 : 0);
             Height = rows * RowHeight;
             Invalidate();

@@ -31,6 +31,10 @@ namespace ClassTrack.UI.Controls
             Note.Dock = DockStyle.Fill;
             Note.Height = Theme.Small.Height + 4;
 
+            // Automation ids (the control Name) let tools find the figures without hiding their text from screen readers.
+            string id = caption.ToLowerInvariant().Replace(' ', '-');
+            Value.Name = id + "-value";
+            Note.Name = id + "-note";
             Controls.Add(cap, 0, 0);
             Controls.Add(Value, 0, 1);
             Controls.Add(Note, 0, 2);

@@ -54,6 +54,9 @@ namespace ClassTrack.Views
             page.AddRow(BuildBody());
             page.AddRow(BuildActionBar());
 
+            txtFirstName.Caption = "First name"; txtSurname.Caption = "Surname"; txtEmail.Caption = "Email address";
+            txtContact.Caption = "Contact number"; txtCourse.Caption = "Course"; cboYear.AccessibleName = "Year level";
+            photoBox.AccessibleName = "Profile picture preview";
             txtFirstName.MaxLength = 50;
             txtSurname.MaxLength = 50;
             txtEmail.MaxLength = 254;

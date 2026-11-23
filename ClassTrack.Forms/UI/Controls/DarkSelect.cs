@@ -28,6 +28,7 @@ namespace ClassTrack.UI.Controls
             Font = Theme.Body;
             Cursor = Cursors.Hand;
             Margin = Padding.Empty;
+            AccessibleRole = AccessibleRole.ComboBox;
 
             using var probe = new TextBox { Font = Font };
             Height = probe.PreferredHeight + 22;   // same height as DarkTextBox

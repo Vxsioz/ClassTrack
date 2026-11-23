@@ -20,6 +20,8 @@ namespace ClassTrack.UI.Controls
                      ControlStyles.Selectable | ControlStyles.SupportsTransparentBackColor, true);
             BackColor = Color.Transparent;
             TabStop = true;
+            AccessibleName = "Zoom";
+            AccessibleRole = AccessibleRole.Slider;
             Cursor = Cursors.Hand;
             Height = 30;
             Margin = Padding.Empty;
