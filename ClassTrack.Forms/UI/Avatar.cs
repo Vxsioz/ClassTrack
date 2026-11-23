@@ -3,7 +3,7 @@ using ClassTrack.Services;
 
 namespace ClassTrack.UI
 {
-    /// <summary>Renders a student's picture (or initials placeholder) as a small rounded image.</summary>
+    /// <summary>Renders a student's picture (or an initials placeholder) as a small rounded image with a glass ring.</summary>
     public static class Avatar
     {
         /// <param name="cornerRadius">Use size / 2 for a circle.</param>
@@ -22,8 +22,8 @@ namespace ClassTrack.UI
             g.InterpolationMode = InterpolationMode.HighQualityBicubic;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
 
-            var rect = new Rectangle(0, 0, size - 1, size - 1);
-            using var path = RoundedRect(rect, cornerRadius);
+            var rect = new RectangleF(0.5f, 0.5f, size - 1.5f, size - 1.5f);
+            using var path = Glass.RoundedRect(rect, cornerRadius);
 
             if (photo != null)
             {
@@ -33,18 +33,20 @@ namespace ClassTrack.UI
             }
             else
             {
-                using var fill = new SolidBrush(Color.FromArgb(36, 39, 47));
+                using var fill = new LinearGradientBrush(rect, Color.FromArgb(64, 78, 112), Color.FromArgb(34, 38, 54), LinearGradientMode.ForwardDiagonal);
                 g.FillPath(fill, path);
 
                 using var font = new Font("Segoe UI Semibold", size * 0.34F, FontStyle.Regular, GraphicsUnit.Pixel);
                 using var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-                using var text = new SolidBrush(Theme.TextMuted);
+                using var text = new SolidBrush(Color.FromArgb(215, 224, 245));
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
                 g.DrawString(initials, font, text, new RectangleF(0, 0, size, size + 1), format);
             }
 
-            using var border = new Pen(Theme.Border);
-            g.DrawPath(border, path);
+            // Glass ring: brighter at the top-left.
+            using var ring = new LinearGradientBrush(rect, Color.FromArgb(120, 255, 255, 255), Color.FromArgb(24, 255, 255, 255), LinearGradientMode.ForwardDiagonal);
+            using var pen = new Pen(ring, size >= 100 ? 1.5f : 1f);
+            g.DrawPath(pen, path);
             return bmp;
         }
 
@@ -53,19 +55,6 @@ namespace ClassTrack.UI
             string a = firstName.Trim().Length > 0 ? firstName.Trim()[..1] : "";
             string b = surname.Trim().Length > 0 ? surname.Trim()[..1] : "";
             return (a + b).ToUpperInvariant();
-        }
-
-        private static GraphicsPath RoundedRect(Rectangle r, int radius)
-        {
-            var path = new GraphicsPath();
-            int d = Math.Min(radius * 2, Math.Min(r.Width, r.Height));
-            if (d <= 0) { path.AddRectangle(r); return path; }
-            path.AddArc(r.X, r.Y, d, d, 180, 90);
-            path.AddArc(r.Right - d, r.Y, d, d, 270, 90);
-            path.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
-            path.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
-            path.CloseFigure();
-            return path;
         }
     }
 }

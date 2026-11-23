@@ -33,10 +33,10 @@ namespace ClassTrack.UI.Controls
         {
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw |
-                     ControlStyles.Selectable, true);
+                     ControlStyles.Selectable | ControlStyles.SupportsTransparentBackColor, true);
             TabStop = true;
             Cursor = Cursors.SizeAll;
-            BackColor = Color.FromArgb(8, 9, 11);
+            BackColor = Color.Transparent;
         }
 
         /// <summary>The picture being cropped (not owned: the caller disposes it).</summary>
@@ -155,11 +155,19 @@ namespace ClassTrack.UI.Controls
 
         // ---- painting ---------------------------------------------------------
 
+
+        protected override void OnPaintBackground(PaintEventArgs e) { }   // painted at the start of OnPaint instead (buffered controls ignore this)
+
         protected override void OnPaint(PaintEventArgs e)
         {
+            Backdrop.PaintBehind(e.Graphics, this);   // what is behind us: backdrop and any glass around us
             var g = e.Graphics;
-            g.Clear(BackColor);
-            if (source == null) return;
+            // Everything is clipped to a rounded rectangle so the stage matches the glass around it.
+            Glass.Smooth(g);
+            using var stage = Glass.RoundedRect(new RectangleF(0, 0, Width, Height), 16);
+            g.SetClip(stage);
+            using (var dark = new SolidBrush(Color.FromArgb(7, 8, 10))) g.FillRectangle(dark, 0, 0, Width, Height);
+            if (source == null) { g.ResetClip(); return; }
 
             g.InterpolationMode = dragging ? InterpolationMode.Bilinear : InterpolationMode.HighQualityBilinear;
             g.PixelOffsetMode = PixelOffsetMode.Half;
@@ -187,11 +195,9 @@ namespace ClassTrack.UI.Controls
             using var border = new Pen(Color.FromArgb(230, 255, 255, 255));
             g.DrawRectangle(border, frame.X, frame.Y, frame.Width - 1, frame.Height - 1);
 
-            if (Focused && ShowFocusCues)
-            {
-                using var focus = new Pen(Theme.Accent, 2);
-                g.DrawRectangle(focus, 1, 1, Width - 3, Height - 3);
-            }
+            g.ResetClip();
+            using var edge = new Pen(Focused && ShowFocusCues ? Theme.AccentSoft : Color.FromArgb(60, 255, 255, 255), Focused && ShowFocusCues ? 1.5f : 1f);
+            g.DrawPath(edge, stage);
         }
 
         // ---- interaction ------------------------------------------------------

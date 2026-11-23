@@ -6,11 +6,11 @@ using ClassTrack.UI.Controls;
 
 namespace ClassTrack.Views
 {
-    /// <summary>The student list: search, course/year filters, sort, page, and per-row View / Edit / Delete.</summary>
+    /// <summary>The student directory: search, course/year filters, sort, page, and per-row View / Edit / Delete.</summary>
     public sealed class StudentsView : ViewBase
     {
         private const int PageSize = 10;
-        private const int AvatarSize = 32;
+        private const int AvatarSize = 34;
         private static readonly Regex PlainPhone = new(@"^\+?[0-9 ()\-]+$");
 
         private readonly StudentRepository repo = new();
@@ -27,41 +27,56 @@ namespace ClassTrack.Views
         private int loadVersion;           // lets a slow, older load be ignored
         private bool updatingFilters;      // true while we fill the filter boxes ourselves
         private readonly List<Bitmap> avatars = new();
+        private readonly System.Windows.Forms.Timer searchDelay = new() { Interval = 320 };
 
+        private readonly PageHeader header = new("Students", "");
         private readonly DarkTextBox txtSearch = new();
         private readonly DarkSelect cboCourse = new();
         private readonly DarkSelect cboYear = new();
         private readonly DarkGrid grid = new();
-        private readonly Label lblSubtitle = Ui.Text("", Theme.Body, Theme.TextMuted);
         private readonly Label lblPage = Ui.Text("", Theme.Small, Theme.TextMuted);
         private readonly Label lblEmptyTitle = Ui.Text("", Theme.H2, Theme.Text);
         private readonly Label lblEmptyHint = Ui.Text("", Theme.Body, Theme.TextMuted);
-        private readonly Panel emptyState = new() { Dock = DockStyle.Fill, BackColor = Theme.Bg, Visible = false };
-        private readonly FlatButton btnPrev = new("‹  Previous");
-        private readonly FlatButton btnNext = new("Next  ›");
+        private readonly Panel emptyState = new() { Dock = DockStyle.Fill, BackColor = Theme.TableSurface, Visible = false };
+        private readonly FlatButton btnPrev = new("Previous", ButtonKind.Ghost) { Icon = IconKind.ChevronLeft };
+        private readonly FlatButton btnNext = new("Next", ButtonKind.Ghost);
 
         /// <summary>Raised with a student's ID when the user opens their details.</summary>
         public event EventHandler<int>? StudentRequested;
 
+        /// <summary>Raised with a student's ID when the user chooses Edit.</summary>
+        public event EventHandler<int>? EditRequested;
+
+        /// <summary>Raised when the user chooses Add student.</summary>
+        public event EventHandler? AddRequested;
+
         public StudentsView()
         {
             actions = new StudentActions(repo);
+            searchDelay.Tick += async (_, _) => { searchDelay.Stop(); await SearchAsync(); };
 
-            var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 5, BackColor = Theme.Bg };
+            var root = new TablePanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, BackColor = Color.Transparent };
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));          // header
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));          // search
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));          // filters
-            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));     // grid
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));          // toolbar
+            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));     // table
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));          // pager
             root.Controls.Add(BuildHeader(), 0, 0);
-            root.Controls.Add(BuildSearchBar(), 0, 1);
-            root.Controls.Add(BuildFilterBar(), 0, 2);
-            root.Controls.Add(BuildGridArea(), 0, 3);
-            root.Controls.Add(BuildPager(), 0, 4);
+            root.Controls.Add(BuildToolbar(), 0, 1);
+            root.Controls.Add(BuildTable(), 0, 2);
+            root.Controls.Add(BuildPager(), 0, 3);
             Controls.Add(root);
         }
 
         public override Task RefreshDataAsync() => ReloadAsync();
+
+        /// <summary>Applies a search typed elsewhere (the top bar) and shows the results.</summary>
+        public Task SetSearchAsync(string term)
+        {
+            txtSearch.Text = term;
+            appliedTerm = term;
+            page = 1;
+            return ReloadAsync();
+        }
 
         // =====================================================================
         //  Layout
@@ -69,66 +84,47 @@ namespace ClassTrack.Views
 
         private Control BuildHeader()
         {
-            var header = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 2, Margin = new Padding(0, 0, 0, 22) };
-            header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-
-            var btnAdd = new FlatButton("Add student", ButtonKind.Primary) { Anchor = AnchorStyles.Right };
-            btnAdd.Click += async (_, _) => await AddStudentAsync();
-
-            header.Controls.Add(Ui.Heading("Students", lblSubtitle), 0, 0);
-            header.Controls.Add(btnAdd, 1, 0);
+            var btnExport = new FlatButton("Export CSV");
+            btnExport.Click += async (_, _) => await ExportCsvAsync();
+            var btnAdd = new FlatButton("Add student", ButtonKind.Primary) { Icon = IconKind.Plus };
+            btnAdd.Click += (_, _) => AddRequested?.Invoke(this, EventArgs.Empty);
+            header.AddAction(btnExport);
+            header.AddAction(btnAdd);
             return header;
         }
 
-        private Control BuildSearchBar()
+        private Control BuildToolbar()
         {
-            var bar = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 5, Margin = new Padding(0, 0, 0, 12) };
-            bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            bar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            var bar = new GlassPanel { Dock = DockStyle.Fill, AutoSize = true, Padding = new Padding(14, 12, 14, 12), Radius = 18, Margin = new Padding(0, 0, 0, 14) };
+            var row = new TablePanel { BackColor = Color.Transparent, Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 4 };
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 220F));
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140F));
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-            txtSearch.Width = 340;
+            txtSearch.LeftIcon = IconKind.Search;
             txtSearch.PlaceholderText = "Search by ID, name, email or course";
-            txtSearch.Anchor = AnchorStyles.Left;
-            txtSearch.Margin = new Padding(0, 0, 8, 0);
+            txtSearch.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            txtSearch.Inner.TextChanged += (_, _) =>
+            {
+                if (updatingFilters) return;
+                searchDelay.Stop();
+                searchDelay.Start();             // search as you type, once you pause
+            };
             txtSearch.Inner.KeyDown += async (_, e) =>
             {
                 if (e.KeyCode != Keys.Enter) return;
                 e.SuppressKeyPress = true;
-                await SearchAsync();
+                searchDelay.Stop();
+                await SearchAsync();             // Enter searches immediately
             };
 
-            var btnSearch = new FlatButton("Search") { Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 8, 0) };
-            btnSearch.Click += async (_, _) => await SearchAsync();
-            var btnClear = new FlatButton("Clear", ButtonKind.Ghost) { Anchor = AnchorStyles.Left };
-            btnClear.Click += async (_, _) => await ClearAsync();
-            var btnExport = new FlatButton("Export CSV", ButtonKind.Ghost) { Anchor = AnchorStyles.Right };
-            btnExport.Click += async (_, _) => await ExportCsvAsync();
-
-            bar.Controls.Add(txtSearch, 0, 0);
-            bar.Controls.Add(btnSearch, 1, 0);
-            bar.Controls.Add(btnClear, 2, 0);
-            bar.Controls.Add(btnExport, 4, 0);
-            return bar;
-        }
-
-        private Control BuildFilterBar()
-        {
-            var bar = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                AutoSize = true,
-                WrapContents = false,
-                Margin = new Padding(0, 0, 0, 14)
-            };
-
-            cboCourse.Width = 220;
-            cboYear.Width = 140;
+            cboCourse.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            cboCourse.Margin = new Padding(10, 0, 0, 0);
+            cboYear.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            cboYear.Margin = new Padding(10, 0, 0, 0);
             cboYear.Items.Add("All years");
-            for (int y = 1; y <= StudentForm.MaxYearLevel; y++) cboYear.Items.Add($"Year {y}");
+            for (int y = 1; y <= Student.MaxYearLevel; y++) cboYear.Items.Add($"Year {y}");
             cboYear.SelectedIndex = 0;
 
             cboCourse.SelectedIndexChanged += async (_, _) =>
@@ -146,44 +142,52 @@ namespace ClassTrack.Views
                 await LoadAsync();
             };
 
-            var lblCourse = Ui.Text("Course", Theme.Small, Theme.TextMuted, new Padding(0, 7, 8, 0));
-            var lblYear = Ui.Text("Year", Theme.Small, Theme.TextMuted, new Padding(20, 7, 8, 0));
-            bar.Controls.AddRange(new Control[] { lblCourse, cboCourse, lblYear, cboYear });
+            var btnClear = new FlatButton("Clear", ButtonKind.Ghost) { Anchor = AnchorStyles.Left, Margin = new Padding(10, 0, 0, 0) };
+            btnClear.Click += async (_, _) => await ClearAsync();
+
+            row.Controls.Add(txtSearch, 0, 0);
+            row.Controls.Add(cboCourse, 1, 0);
+            row.Controls.Add(cboYear, 2, 0);
+            row.Controls.Add(btnClear, 3, 0);
+            bar.Controls.Add(row);
             return bar;
         }
 
-        private Control BuildGridArea()
+        private Control BuildTable()
         {
             ConfigureGrid();
 
             // The empty state sits on top of the grid and is shown instead of it.
-            var stack = new FlowLayoutPanel
+            var stack = new FlowPanel
             {
                 AutoSize = true,
                 FlowDirection = FlowDirection.TopDown,
                 WrapContents = false,
                 Anchor = AnchorStyles.None,
-                BackColor = Theme.Bg
+                BackColor = Theme.TableSurface
             };
             lblEmptyTitle.Anchor = AnchorStyles.None;
             lblEmptyHint.Anchor = AnchorStyles.None;
+            lblEmptyTitle.BackColor = Theme.TableSurface;
+            lblEmptyHint.BackColor = Theme.TableSurface;
             lblEmptyHint.Margin = new Padding(0, 4, 0, 0);
             stack.Controls.Add(lblEmptyTitle);
             stack.Controls.Add(lblEmptyHint);
 
-            var center = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 1, BackColor = Theme.Bg };
+            var center = new TablePanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 1, BackColor = Theme.TableSurface };
             center.Controls.Add(stack, 0, 0);
             emptyState.Controls.Add(center);
 
-            var host = new Panel { Dock = DockStyle.Fill, Margin = Padding.Empty };
-            host.Controls.Add(grid);
-            host.Controls.Add(emptyState);
-            return host;
+            // Solid glass: tables need a calm, dense surface for readability.
+            var panel = new GlassPanel { Dock = DockStyle.Fill, Solid = true, Padding = new Padding(10, 8, 10, 12), Radius = 20 };
+            panel.Controls.Add(grid);
+            panel.Controls.Add(emptyState);
+            return panel;
         }
 
         private Control BuildPager()
         {
-            var pager = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 4, Margin = new Padding(0, 12, 0, 0) };
+            var pager = new TablePanel { BackColor = Color.Transparent, Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 4, Margin = new Padding(0, 14, 0, 0) };
             pager.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             pager.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             pager.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -194,7 +198,7 @@ namespace ClassTrack.Views
             btnNext.Margin = new Padding(8, 0, 0, 0);
             btnNext.Click += async (_, _) => await GoToPageAsync(page + 1);
             lblPage.Anchor = AnchorStyles.None;
-            lblPage.Margin = new Padding(8, 0, 8, 0);
+            lblPage.Margin = new Padding(12, 0, 12, 0);
 
             pager.Controls.Add(btnPrev, 0, 0);
             pager.Controls.Add(lblPage, 1, 0);
@@ -208,10 +212,10 @@ namespace ClassTrack.Views
             grid.Columns.Add(new DataGridViewImageColumn
             {
                 Name = "colPhoto", HeaderText = "",
-                Width = AvatarSize + 28, Resizable = DataGridViewTriState.False,
+                Width = AvatarSize + 30, Resizable = DataGridViewTriState.False,
                 SortMode = DataGridViewColumnSortMode.NotSortable,
                 ImageLayout = DataGridViewImageCellLayout.Normal,
-                DefaultCellStyle = { Padding = new Padding(12, 0, 0, 0), Alignment = DataGridViewContentAlignment.MiddleLeft }
+                DefaultCellStyle = { Padding = new Padding(14, 0, 0, 0), Alignment = DataGridViewContentAlignment.MiddleLeft }
             });
             AddText("colId", "ID", 76, 0, "Id");
             AddText("colFirst", "FIRST NAME", 0, 24, "FirstName");
@@ -231,13 +235,13 @@ namespace ClassTrack.Views
                     StudentRequested?.Invoke(this, RowId(e.RowIndex));
             };
 
-            void AddText(string name, string header, int width, float fill, string sortKey)
+            void AddText(string name, string headerText, int width, float fill, string sortKey)
             {
                 var col = new DataGridViewTextBoxColumn
                 {
-                    Name = name, HeaderText = header, Tag = sortKey,
+                    Name = name, HeaderText = headerText, Tag = sortKey,
                     SortMode = DataGridViewColumnSortMode.Programmatic,
-                    MinimumWidth = DarkGrid.HeaderWidth(header)
+                    MinimumWidth = DarkGrid.HeaderWidth(headerText, 26)
                 };
                 if (width > 0) { col.AutoSizeMode = DataGridViewAutoSizeColumnMode.None; col.Width = width; }
                 else { col.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill; col.FillWeight = fill; }
@@ -332,7 +336,7 @@ namespace ClassTrack.Views
             }
 
             string noun = result.Total == 1 ? "student" : "students";
-            lblSubtitle.Text = searching
+            header.Subtitle = searching
                 ? $"{result.Total} {(result.Total == 1 ? "result" : "results")} for “{appliedTerm!.Trim()}”"
                 : filtering ? $"{result.Total} {noun} match the filters"
                 : $"{result.Total} registered {noun}";
@@ -361,11 +365,12 @@ namespace ClassTrack.Views
         /// <summary>Clears the search and both filters.</summary>
         private Task ClearAsync()
         {
+            searchDelay.Stop();
+            updatingFilters = true;
             txtSearch.Text = "";
             appliedTerm = null;
             selectedCourse = null;
             selectedYear = null;
-            updatingFilters = true;
             cboCourse.SelectedIndex = cboCourse.Items.Count > 0 ? 0 : -1;
             cboYear.SelectedIndex = 0;
             updatingFilters = false;
@@ -390,14 +395,8 @@ namespace ClassTrack.Views
         }
 
         // =====================================================================
-        //  Student actions
+        //  Row actions
         // =====================================================================
-
-        public async Task AddStudentAsync()
-        {
-            if (await actions.AddAsync(this) != null)
-                await ReloadAsync();
-        }
 
         private async void Grid_CellContentClick(object? sender, DataGridViewCellEventArgs e)
         {
@@ -407,11 +406,8 @@ namespace ClassTrack.Views
             if (action is not ("colView" or "colEdit" or "colDelete")) return;
 
             int id = RowId(e.RowIndex);
-            if (action == "colView")
-            {
-                StudentRequested?.Invoke(this, id);
-                return;
-            }
+            if (action == "colView") { StudentRequested?.Invoke(this, id); return; }
+            if (action == "colEdit") { EditRequested?.Invoke(this, id); return; }
 
             Student? student = null;
             if (!await TryDbAsync(async () => student = await repo.GetAsync(id))) return;
@@ -422,10 +418,8 @@ namespace ClassTrack.Views
                 return;
             }
 
-            bool changed = action == "colEdit"
-                ? await actions.EditAsync(this, student)
-                : await actions.DeleteAsync(this, student);
-            if (changed) await ReloadAsync();   // the page is clamped if the last row of a page was deleted
+            if (await actions.DeleteAsync(this, student))
+                await ReloadAsync();   // the page is clamped if the last row of a page was deleted
         }
 
         // =====================================================================
@@ -499,6 +493,12 @@ namespace ClassTrack.Views
                 value = "\"" + value.Replace("\"", "\"\"") + "\"";
 
             return value;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) searchDelay.Dispose();
+            base.Dispose(disposing);
         }
     }
 }

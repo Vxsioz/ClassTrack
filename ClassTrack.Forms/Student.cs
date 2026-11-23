@@ -6,6 +6,9 @@ namespace ClassTrack
     // records created before they existed stay valid.
     public class Student
     {
+        /// <summary>Highest year level offered in the pickers and filters.</summary>
+        public const int MaxYearLevel = 6;
+
         public int Id { get; set; }
 
         [Required, StringLength(50)]

@@ -12,11 +12,11 @@ namespace ClassTrack
     public sealed class CropDialog : DarkForm
     {
         private const int CropViewSize = 440;
-        private const int PreviewSize = 170;
+        private const int PreviewSize = 168;
 
         private readonly CropControl crop = new() { Size = new Size(CropViewSize, CropViewSize), Margin = Padding.Empty };
-        private readonly DarkSlider slider = new() { Dock = DockStyle.Fill, BackColor = Theme.Bg };
-        private readonly PictureBox preview = new() { Size = new Size(PreviewSize, PreviewSize), Margin = Padding.Empty, BackColor = Theme.Input };
+        private readonly DarkSlider slider = new() { Dock = DockStyle.Fill };
+        private readonly GlassPicture preview = new() { Size = new Size(PreviewSize, PreviewSize), Margin = Padding.Empty, BackColor = Color.Transparent };
         private readonly System.Windows.Forms.Timer previewTimer = new() { Interval = 40 };
         private bool previewDirty = true;
         private bool syncingZoom;
@@ -35,53 +35,62 @@ namespace ClassTrack
             ShowInTaskbar = false;
             AutoSize = true;
             AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            Padding = new Padding(14);
 
-            var layout = new TableLayoutPanel
+            var card = new GlassPanel { Dock = DockStyle.Fill, AutoSize = true, Padding = new Padding(26, 24, 26, 22), Radius = 24 };
+            var layout = new TablePanel
             {
                 Dock = DockStyle.Fill,
                 AutoSize = true,
                 ColumnCount = 2,
-                Padding = new Padding(24, 22, 24, 20)
+                BackColor = Color.Transparent
             };
 
-            // Left: the crop area and zoom control
-            layout.Controls.Add(crop, 0, 0);
+            // Left: the crop stage and zoom control
+            layout.Controls.Add(Ui.Text("Crop picture", Theme.H2, Theme.Text), 0, 0);
+            layout.SetColumnSpan(layout.GetControlFromPosition(0, 0)!, 2);
+            layout.Controls.Add(Ui.Text("Choose exactly which part of the photo is kept.", Theme.Small, Theme.TextMuted, new Padding(0, 2, 0, 16)), 0, 1);
+            layout.SetColumnSpan(layout.GetControlFromPosition(0, 1)!, 2);
+            layout.Controls.Add(crop, 0, 2);
             layout.SetRowSpan(crop, 2);
-            layout.Controls.Add(BuildZoomRow(), 0, 2);
+            layout.Controls.Add(BuildZoomRow(), 0, 4);
 
             // Right: live preview of exactly what will be saved
-            var side = new FlowLayoutPanel
+            var side = new FlowPanel
             {
                 AutoSize = true,
                 FlowDirection = FlowDirection.TopDown,
                 WrapContents = false,
-                Margin = new Padding(24, 0, 0, 0)
+                BackColor = Color.Transparent,
+                Margin = new Padding(26, 0, 0, 0)
             };
             side.Controls.Add(Ui.Text("PREVIEW", Theme.Caption, Theme.TextMuted, new Padding(0, 0, 0, 8)));
             side.Controls.Add(preview);
-            side.Controls.Add(Ui.Text("This is the square picture\nthat will be saved.", Theme.Small, Theme.TextMuted, new Padding(0, 10, 0, 18)));
-            side.Controls.Add(Ui.Text("Drag the picture to move it.\nScroll or use the slider to zoom.\nArrow keys nudge it.", Theme.Small, Theme.TextMuted));
+            side.Controls.Add(Ui.Text("This is the square picture\nthat will be saved.", Theme.Small, Theme.TextMuted, new Padding(0, 12, 0, 20)));
+            side.Controls.Add(Ui.Text("Drag to move the picture.\nScroll or use the slider to zoom.\nArrow keys nudge it.", Theme.Small, Theme.TextFaint));
             if (Math.Min(source.Width, source.Height) < 256)
                 side.Controls.Add(Ui.Text("This picture is small, so it may\nlook soft once cropped.", Theme.Small, Theme.Danger, new Padding(0, 18, 0, 0)));
-            layout.Controls.Add(side, 1, 0);
+            layout.Controls.Add(side, 1, 2);
             layout.SetRowSpan(side, 3);
 
-            var btnApply = new FlatButton("Apply crop", ButtonKind.Primary) { Margin = new Padding(8, 0, 0, 0) };
+            var btnApply = new FlatButton("Apply crop", ButtonKind.Primary) { Margin = new Padding(10, 0, 0, 0) };
             btnApply.Click += (_, _) => Apply();
             var btnCancel = new FlatButton("Cancel") { DialogResult = DialogResult.Cancel };
-            var buttons = new FlowLayoutPanel
+            var buttons = new FlowPanel
             {
                 Dock = DockStyle.Fill,
                 AutoSize = true,
                 FlowDirection = FlowDirection.RightToLeft,
-                Margin = new Padding(0, 18, 0, 0)
+                BackColor = Color.Transparent,
+                Margin = new Padding(0, 20, 0, 0)
             };
             buttons.Controls.Add(btnApply);
             buttons.Controls.Add(btnCancel);
-            layout.Controls.Add(buttons, 0, 3);
+            layout.Controls.Add(buttons, 0, 5);
             layout.SetColumnSpan(buttons, 2);
 
-            Controls.Add(layout);
+            card.Controls.Add(layout);
+            Controls.Add(card);
             AcceptButton = btnApply;
             CancelButton = btnCancel;
 
@@ -109,7 +118,7 @@ namespace ClassTrack
 
         private Control BuildZoomRow()
         {
-            var row = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 3, Margin = new Padding(0, 14, 0, 0) };
+            var row = new TablePanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 3, Margin = new Padding(0, 14, 0, 0), BackColor = Color.Transparent };
             row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -127,8 +136,10 @@ namespace ClassTrack
         {
             if (!previewDirty) return;
             previewDirty = false;
+
             var old = preview.Image;
-            preview.Image = crop.GetCrop(PreviewSize, InterpolationMode.HighQualityBilinear);
+            using var raw = crop.GetCrop(PreviewSize, InterpolationMode.HighQualityBilinear);
+            preview.Image = raw == null ? null : Avatar.CreateFrom(raw, "", PreviewSize, 18);
             old?.Dispose();
         }
 

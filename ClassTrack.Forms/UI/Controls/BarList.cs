@@ -1,9 +1,10 @@
+using System.Drawing.Drawing2D;
 using ClassTrack.Data;
 
 namespace ClassTrack.UI.Controls
 {
     /// <summary>
-    /// A plain ranked list with thin proportional bars: label, count and share on one line, bar beneath.
+    /// A ranked list with soft glass tracks and gradient bars: label, count and share on one line, bar beneath.
     /// Shows the top rows and folds the rest into a "+ N more" line. Sizes itself to its content.
     /// </summary>
     public sealed class BarList : Control
@@ -17,8 +18,9 @@ namespace ClassTrack.UI.Controls
 
         public BarList()
         {
-            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
-                     ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer |
+                     ControlStyles.ResizeRedraw | ControlStyles.SupportsTransparentBackColor, true);
+            BackColor = Color.Transparent;
             Margin = Padding.Empty;
             Dock = DockStyle.Fill;
             SetItems(new List<CountBy>(), emptyText);
@@ -34,10 +36,14 @@ namespace ClassTrack.UI.Controls
             Invalidate();
         }
 
+
+        protected override void OnPaintBackground(PaintEventArgs e) { }   // painted at the start of OnPaint instead (buffered controls ignore this)
+
         protected override void OnPaint(PaintEventArgs e)
         {
+            Backdrop.PaintBehind(e.Graphics, this);   // what is behind us: backdrop and any glass around us
             var g = e.Graphics;
-            g.Clear(Theme.Bg);
+            Glass.Smooth(g);
 
             if (items.Count == 0)
             {
@@ -65,11 +71,18 @@ namespace ClassTrack.UI.Controls
                 TextRenderer.DrawText(g, share, Theme.Small, new Rectangle(Width - shareWidth, y, shareWidth, labelHeight),
                     Theme.TextMuted, TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
 
-                int barY = y + labelHeight + 5;
-                using var track = new SolidBrush(Theme.Border);
-                g.FillRectangle(track, 0, barY, Width, 4);
-                using var fill = new SolidBrush(unassigned ? Theme.TextFaint : Theme.Accent);
-                g.FillRectangle(fill, 0, barY, Math.Max(3, (int)((long)Width * item.Count / max)), 4);
+                var track = new RectangleF(0, y + labelHeight + 5, Width, 6);
+                using (var trackPath = Glass.RoundedRect(track, 3))
+                using (var trackBrush = new SolidBrush(Color.FromArgb(22, 255, 255, 255)))
+                    g.FillPath(trackBrush, trackPath);
+
+                float fillWidth = Math.Max(6, Width * (float)item.Count / max);
+                var bar = new RectangleF(0, track.Y, fillWidth, track.Height);
+                using var barPath = Glass.RoundedRect(bar, 3);
+                Color from = unassigned ? Theme.TextFaint : Theme.Accent;
+                Color to = unassigned ? Theme.TextMuted : Theme.Cyan;
+                using var barBrush = new LinearGradientBrush(new RectangleF(0, bar.Y, Math.Max(fillWidth, 8), bar.Height), from, to, LinearGradientMode.Horizontal);
+                g.FillPath(barBrush, barPath);
             }
 
             if (items.Count > MaxRows)

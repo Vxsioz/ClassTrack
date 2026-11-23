@@ -7,10 +7,10 @@ namespace ClassTrack.UI.Controls
         {
             DoubleBuffered = true;
             Dock = DockStyle.Fill;
-            BackgroundColor = Theme.Bg;
+            BackgroundColor = Theme.TableSurface;
             BorderStyle = BorderStyle.None;
             CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
-            GridColor = Theme.Border;
+            GridColor = Theme.TableLine;
 
             AllowUserToAddRows = false;
             AllowUserToDeleteRows = false;
@@ -25,26 +25,26 @@ namespace ClassTrack.UI.Controls
             ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
             ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
             ColumnHeadersHeight = Theme.Caption.Height + 22;
-            RowTemplate.Height = Theme.Body.Height + 22;
+            RowTemplate.Height = Theme.Body.Height + 26;
 
             var header = ColumnHeadersDefaultCellStyle;
-            header.BackColor = Theme.Bg;
+            header.BackColor = Theme.TableSurface;
             header.ForeColor = Theme.TextMuted;
             header.Font = Theme.Caption;
-            header.SelectionBackColor = Theme.Bg;
+            header.SelectionBackColor = Theme.TableSurface;
             header.SelectionForeColor = Theme.TextMuted;
             header.Padding = new Padding(12, 0, 0, 0);
 
             var cells = DefaultCellStyle;
-            cells.BackColor = Theme.Bg;
+            cells.BackColor = Theme.TableSurface;
             cells.ForeColor = Theme.Text;
             cells.Font = Theme.Body;
-            cells.SelectionBackColor = Theme.Bg;
+            cells.SelectionBackColor = Theme.TableSurface;
             cells.SelectionForeColor = Theme.Text;
             cells.Padding = new Padding(12, 0, 0, 0);
 
             // Hover highlight: set on the row, cleared on leave.
-            CellMouseEnter += (_, e) => { if (e.RowIndex >= 0) Rows[e.RowIndex].DefaultCellStyle.BackColor = Theme.Surface; };
+            CellMouseEnter += (_, e) => { if (e.RowIndex >= 0) Rows[e.RowIndex].DefaultCellStyle.BackColor = Theme.TableHover; };
             CellMouseLeave += (_, e) => { if (e.RowIndex >= 0 && e.RowIndex < Rows.Count) Rows[e.RowIndex].DefaultCellStyle.BackColor = Color.Empty; };
 
             SelectionChanged += (_, _) => ClearSelection();
@@ -82,7 +82,7 @@ namespace ClassTrack.UI.Controls
                 TrackVisitedState = false,
                 LinkBehavior = LinkBehavior.HoverUnderline,
                 AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
-                Width = TextRenderer.MeasureText(text, Theme.Body).Width + 30,
+                Width = TextRenderer.MeasureText(text, Theme.Body).Width + 24,
                 Resizable = DataGridViewTriState.False,
                 SortMode = DataGridViewColumnSortMode.NotSortable
             };

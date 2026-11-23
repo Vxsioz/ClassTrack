@@ -17,7 +17,8 @@ namespace ClassTrack.UI.Controls
         {
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw |
-                     ControlStyles.Selectable, true);
+                     ControlStyles.Selectable | ControlStyles.SupportsTransparentBackColor, true);
+            BackColor = Color.Transparent;
             TabStop = true;
             Cursor = Cursors.Hand;
             Height = 30;
@@ -43,10 +44,12 @@ namespace ClassTrack.UI.Controls
 
         private void SetFromX(int x) => Value = (int)Math.Round((x - TrackLeft) * 100.0 / TrackWidth);
 
+        protected override void OnPaintBackground(PaintEventArgs e) { }   // painted at the start of OnPaint instead (buffered controls ignore this)
+
         protected override void OnPaint(PaintEventArgs e)
         {
+            Backdrop.PaintBehind(e.Graphics, this);   // what is behind us: backdrop and any glass around us
             var g = e.Graphics;
-            g.Clear(BackColor);
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
             int cy = Height / 2;

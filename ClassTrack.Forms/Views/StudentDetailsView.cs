@@ -4,51 +4,53 @@ using ClassTrack.UI.Controls;
 
 namespace ClassTrack.Views
 {
-    /// <summary>One student's picture and saved information, with Edit and Delete.</summary>
+    /// <summary>One student's picture and saved information, organised into sections, with Edit and Delete.</summary>
     public sealed class StudentDetailsView : ViewBase
     {
-        private const int PictureSize = 168;
+        private const int PictureSize = 148;
 
         private readonly StudentRepository repo = new();
         private readonly StudentActions actions;
+        private readonly ScrollHost page = new();
         private Student? current;
 
-        private readonly PictureBox picture = new() { Size = new Size(PictureSize, PictureSize), Margin = new Padding(0, 4, 36, 0) };
+        private readonly GlassPicture picture = new() { Size = new Size(PictureSize, PictureSize), Margin = new Padding(0, 0, 30, 0), BackColor = Color.Transparent };
         private readonly Label lblName = Ui.Text("", Theme.H1, Theme.Text);
         private readonly Label lblId = Ui.Text("", Theme.Body, Theme.TextMuted);
         private readonly Label valEmail = Ui.Text("", Theme.Body, Theme.Text);
         private readonly Label valContact = Ui.Text("", Theme.Body, Theme.Text);
         private readonly Label valCourse = Ui.Text("", Theme.Body, Theme.Text);
         private readonly Label valYear = Ui.Text("", Theme.Body, Theme.Text);
+        private readonly Label chipCourse = Ui.Text("", Theme.Small, Theme.AccentSoft);
+        private readonly Label chipYear = Ui.Text("", Theme.Small, Theme.AccentSoft);
 
-        /// <summary>Raised when the user goes back to the list, or the student no longer exists.</summary>
+        /// <summary>Raised when the user goes back to the directory, or the student no longer exists / was deleted.</summary>
         public event EventHandler? BackRequested;
+
+        /// <summary>Raised with the student's ID when the user chooses Edit.</summary>
+        public event EventHandler<int>? EditRequested;
 
         public StudentDetailsView()
         {
             actions = new StudentActions(repo);
-
-            var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, BackColor = Theme.Bg };
-            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            root.Controls.Add(BuildTopBar(), 0, 0);
-            root.Controls.Add(BuildContent(), 0, 1);
-            Controls.Add(root);
+            Controls.Add(page);
+            page.AddRow(BuildTopBar());
+            page.AddRow(BuildHero());
+            page.AddRow(BuildSections());
         }
 
         private Control BuildTopBar()
         {
-            var bar = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 4, Margin = new Padding(0, 0, 0, 28) };
+            var bar = new TablePanel { BackColor = Color.Transparent, AutoSize = true, ColumnCount = 4, Margin = new Padding(0, 0, 0, 22) };
             bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             bar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
-            var back = new FlatButton("‹  Students", ButtonKind.Ghost);
+            var back = new FlatButton("Students", ButtonKind.Ghost) { Icon = IconKind.ChevronLeft };
             back.Click += (_, _) => BackRequested?.Invoke(this, EventArgs.Empty);
-
-            var edit = new FlatButton("Edit", ButtonKind.Primary) { Margin = new Padding(0, 0, 8, 0) };
-            edit.Click += async (_, _) => await EditAsync();
+            var edit = new FlatButton("Edit", ButtonKind.Primary) { Margin = new Padding(0, 0, 10, 0) };
+            edit.Click += (_, _) => { if (current != null) EditRequested?.Invoke(this, current.Id); };
             var delete = new FlatButton("Delete", ButtonKind.Danger);
             delete.Click += async (_, _) => await DeleteAsync();
 
@@ -58,44 +60,64 @@ namespace ClassTrack.Views
             return bar;
         }
 
-        private Control BuildContent()
+        private Control BuildHero()
         {
-            var content = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 2, RowCount = 1, Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right };
-            content.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            var hero = new GlassPanel { AutoSize = true, Padding = new Padding(30, 28, 30, 28), Margin = new Padding(0, 0, 0, 20), Radius = 24 };
+            var row = new TablePanel { BackColor = Color.Transparent, Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 2 };
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
-            var info = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 2, Margin = Padding.Empty };
-            info.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            info.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            var text = new FlowPanel { BackColor = Color.Transparent, AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Anchor = AnchorStyles.Left, Margin = Padding.Empty };
+            lblName.Font = Theme.Hero;
+            lblId.Margin = new Padding(4, 4, 0, 14);
+            var chips = new FlowPanel { BackColor = Color.Transparent, AutoSize = true, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Margin = new Padding(4, 0, 0, 0) };
+            chips.Controls.Add(Chip(chipCourse));
+            chips.Controls.Add(Chip(chipYear));
+            text.Controls.Add(lblName);
+            text.Controls.Add(lblId);
+            text.Controls.Add(chips);
 
-            lblId.Margin = new Padding(2, 4, 0, 28);
-            info.Controls.Add(lblName, 0, 0);
-            info.SetColumnSpan(lblName, 2);
-            info.Controls.Add(lblId, 0, 1);
-            info.SetColumnSpan(lblId, 2);
-
-            AddField(info, 2, 0, "Email address", valEmail);
-            AddField(info, 2, 1, "Contact number", valContact);
-            AddField(info, 3, 0, "Course / program", valCourse);
-            AddField(info, 3, 1, "Year level", valYear);
-
-            content.Controls.Add(picture, 0, 0);
-            content.Controls.Add(info, 1, 0);
-            return content;
+            picture.Anchor = AnchorStyles.Left;
+            row.Controls.Add(picture, 0, 0);
+            row.Controls.Add(text, 1, 0);
+            hero.Controls.Add(row);
+            return hero;
         }
 
-        private static void AddField(TableLayoutPanel grid, int row, int column, string caption, Label value)
+        /// <summary>A small rounded label with an accent tint.</summary>
+        private static Control Chip(Label label)
         {
-            var block = new FlowLayoutPanel
+            label.Margin = Padding.Empty;
+            label.Font = Theme.Body;
+            var chip = new GlassPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(16, 7, 16, 8), Radius = 16, Margin = new Padding(0, 0, 10, 0) };
+            chip.Controls.Add(label);
+            return chip;
+        }
+
+        private Control BuildSections()
+        {
+            var panel = new GlassPanel { AutoSize = true, Padding = new Padding(30, 26, 30, 10), Margin = new Padding(0, 0, 0, 8), Radius = 24 };
+            var stack = new TablePanel { BackColor = Color.Transparent, Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 2 };
+            stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+
+            Section(stack, 0, "Contact information", ("Email address", valEmail), ("Contact number", valContact));
+            Section(stack, 1, "Academic information", ("Course / program", valCourse), ("Year level", valYear));
+            panel.Controls.Add(stack);
+            return panel;
+        }
+
+        private static void Section(TableLayoutPanel grid, int column, string title, params (string Caption, Label Value)[] fields)
+        {
+            var block = new FlowPanel { BackColor = Color.Transparent, AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(0, 0, 24, 18) };
+            block.Controls.Add(Ui.Text(title, Theme.H3, Theme.Text, new Padding(0, 0, 0, 14)));
+            foreach (var (caption, value) in fields)
             {
-                AutoSize = true,
-                FlowDirection = FlowDirection.TopDown,
-                WrapContents = false,
-                Margin = new Padding(0, 0, 24, 24)
-            };
-            block.Controls.Add(Ui.Text(caption.ToUpperInvariant(), Theme.Caption, Theme.TextMuted, new Padding(0, 0, 0, 4)));
-            block.Controls.Add(value);
-            grid.Controls.Add(block, column, row);
+                block.Controls.Add(Ui.Text(caption.ToUpperInvariant(), Theme.Caption, Theme.TextMuted, new Padding(0, 0, 0, 4)));
+                value.Margin = new Padding(0, 0, 0, 16);
+                block.Controls.Add(value);
+            }
+            grid.Controls.Add(block, column, 0);
         }
 
         public override Task RefreshDataAsync() =>
@@ -116,14 +138,17 @@ namespace ClassTrack.Views
             current = student;
             lblName.Text = student.FullName;
             lblId.Text = $"Student ID {student.Id}";
+            chipCourse.Text = student.Course ?? "No course";
+            chipYear.Text = student.YearLevel == null ? "No year level" : $"Year {student.YearLevel}";
             SetValue(valEmail, student.Email);
             SetValue(valContact, student.ContactNumber);
             SetValue(valCourse, student.Course);
             SetValue(valYear, student.YearLevel == null ? null : $"Year {student.YearLevel}");
 
             var old = picture.Image;
-            picture.Image = Avatar.Create(student, PictureSize, 12);
+            picture.Image = Avatar.Create(student, PictureSize, 26);
             old?.Dispose();
+            page.Fit();
         }
 
         /// <summary>Shows the value, or a faint "Not provided" when the optional field is empty.</summary>
@@ -132,13 +157,6 @@ namespace ClassTrack.Views
             bool has = !string.IsNullOrWhiteSpace(value);
             label.Text = has ? value : "Not provided";
             label.ForeColor = has ? Theme.Text : Theme.TextFaint;
-        }
-
-        private async Task EditAsync()
-        {
-            if (current == null) return;
-            if (await actions.EditAsync(this, current))
-                await ShowStudentAsync(current.Id);
         }
 
         private async Task DeleteAsync()

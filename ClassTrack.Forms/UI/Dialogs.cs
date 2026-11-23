@@ -5,11 +5,17 @@ namespace ClassTrack.UI
     /// <summary>Themed replacements for MessageBox.</summary>
     public static class Dialogs
     {
-        public static void Info(IWin32Window? owner, string title, string message) =>
-            new MessageDialog(title, message, "OK", null, false).ShowDialog(owner);
+        public static void Info(IWin32Window? owner, string title, string message)
+        {
+            using var dlg = new MessageDialog(title, message, "OK", null, false);
+            dlg.ShowDialog(owner);
+        }
 
-        public static void Error(IWin32Window? owner, string title, string message) =>
-            new MessageDialog(title, message, "OK", null, false).ShowDialog(owner);
+        public static void Error(IWin32Window? owner, string title, string message)
+        {
+            using var dlg = new MessageDialog(title, message, "OK", null, false);
+            dlg.ShowDialog(owner);
+        }
 
         /// <summary>Returns true if the user pressed the confirm button.</summary>
         public static bool Confirm(IWin32Window? owner, string title, string message, string confirmText = "Delete", bool danger = true)
@@ -19,6 +25,7 @@ namespace ClassTrack.UI
         }
     }
 
+    /// <summary>A small glass sheet over the ambient backdrop: heading, message, one or two buttons.</summary>
     internal sealed class MessageDialog : DarkForm
     {
         public MessageDialog(string title, string message, string okText, string? cancelText, bool danger)
@@ -31,29 +38,33 @@ namespace ClassTrack.UI
             ShowInTaskbar = false;
             AutoSize = true;
             AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            Padding = new Padding(14);
 
-            var layout = new TableLayoutPanel
+            var card = new GlassPanel { Dock = DockStyle.Fill, AutoSize = true, Padding = new Padding(28, 26, 28, 22), Radius = 22 };
+            var layout = new TablePanel
             {
                 Dock = DockStyle.Fill,
                 AutoSize = true,
                 ColumnCount = 1,
-                MinimumSize = new Size(380, 0),
-                Padding = new Padding(26, 24, 26, 20)
+                BackColor = Color.Transparent,
+                MinimumSize = new Size(360, 0)
             };
 
-            var body = Ui.Text(message, Theme.Body, Theme.Text, new Padding(0, 0, 0, 22));
+            var heading = Ui.Text(title, Theme.H2, Theme.Text, new Padding(0, 0, 0, 8));
+            var body = Ui.Text(message, Theme.Body, Theme.TextMuted, new Padding(0, 0, 0, 24));
             body.MaximumSize = new Size(440, 0);
 
             var ok = new FlatButton(okText, danger ? ButtonKind.Danger : ButtonKind.Primary)
             {
                 DialogResult = DialogResult.OK,
-                Margin = new Padding(8, 0, 0, 0)
+                Margin = new Padding(10, 0, 0, 0)
             };
-            var buttons = new FlowLayoutPanel
+            var buttons = new FlowPanel
             {
                 Dock = DockStyle.Fill,
                 AutoSize = true,
                 FlowDirection = FlowDirection.RightToLeft,
+                BackColor = Color.Transparent,
                 Margin = Padding.Empty
             };
             buttons.Controls.Add(ok);
@@ -74,9 +85,11 @@ namespace ClassTrack.UI
                 }
             }
 
-            layout.Controls.Add(body, 0, 0);
-            layout.Controls.Add(buttons, 0, 1);
-            Controls.Add(layout);
+            layout.Controls.Add(heading, 0, 0);
+            layout.Controls.Add(body, 0, 1);
+            layout.Controls.Add(buttons, 0, 2);
+            card.Controls.Add(layout);
+            Controls.Add(card);
         }
     }
 }

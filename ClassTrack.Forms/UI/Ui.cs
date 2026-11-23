@@ -1,9 +1,12 @@
+using ClassTrack.UI.Controls;
+
 namespace ClassTrack.UI
 {
     /// <summary>Tiny factory helpers so views don't repeat label boilerplate.</summary>
     public static class Ui
     {
-        public static Label Text(string text, Font font, Color color, Padding? margin = null) => new()
+        /// <summary>A transparent label (it shows the glass or backdrop behind it).</summary>
+        public static Label Text(string text, Font font, Color color, Padding? margin = null) => new GlassLabel()
         {
             Text = text,
             Font = font,
@@ -13,22 +16,13 @@ namespace ClassTrack.UI
             BackColor = Color.Transparent
         };
 
-        /// <summary>Page title + muted subtitle, stacked.</summary>
-        public static FlowLayoutPanel Heading(string title, Label subtitle)
+        /// <summary>A hairline divider that lets the glass show through.</summary>
+        public static Panel Divider(int height = 1) => new()
         {
-            var panel = new FlowLayoutPanel
-            {
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                FlowDirection = FlowDirection.TopDown,
-                WrapContents = false,
-                Margin = Padding.Empty,
-                Anchor = AnchorStyles.Left
-            };
-            panel.Controls.Add(Text(title, Theme.H1, Theme.Text));
-            subtitle.Margin = new Padding(2, 2, 0, 0);
-            panel.Controls.Add(subtitle);
-            return panel;
-        }
+            Height = height,
+            Dock = DockStyle.Fill,
+            BackColor = Color.FromArgb(26, 255, 255, 255),
+            Margin = new Padding(0, 6, 0, 6)
+        };
     }
 }

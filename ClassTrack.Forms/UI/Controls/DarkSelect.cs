@@ -1,10 +1,11 @@
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Drawing.Drawing2D;
 
 namespace ClassTrack.UI.Controls
 {
     /// <summary>
-    /// A dark drop-down list (the native ComboBox can't be fully darkened). Pick one string from Items.
+    /// A glass drop-down list (the native ComboBox can't be fully darkened). Pick one string from Items.
     /// Opens a themed menu on click, Enter, Space or F4; Up/Down change the choice when closed.
     /// </summary>
     public class DarkSelect : Control
@@ -21,14 +22,15 @@ namespace ClassTrack.UI.Controls
         {
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw |
-                     ControlStyles.Selectable, true);
+                     ControlStyles.Selectable | ControlStyles.SupportsTransparentBackColor, true);
+            BackColor = Color.Transparent;
             TabStop = true;
             Font = Theme.Body;
             Cursor = Cursors.Hand;
             Margin = Padding.Empty;
 
             using var probe = new TextBox { Font = Font };
-            Height = probe.PreferredHeight + 18;   // same height as DarkTextBox
+            Height = probe.PreferredHeight + 22;   // same height as DarkTextBox
         }
 
         [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -58,21 +60,21 @@ namespace ClassTrack.UI.Controls
 
         // ---- painting ---------------------------------------------------------
 
+
+        protected override void OnPaintBackground(PaintEventArgs e) { }   // painted at the start of OnPaint instead (buffered controls ignore this)
+
         protected override void OnPaint(PaintEventArgs e)
         {
+            Backdrop.PaintBehind(e.Graphics, this);   // what is behind us: backdrop and any glass around us
             var g = e.Graphics;
-            g.Clear(Theme.Input);
+            Glass.PaintField(g, new Rectangle(2, 2, Width - 4, Height - 4), 11, open || (Focused && ShowFocusCues), false, hover);
 
-            Color border = open || (Focused && ShowFocusCues) ? Theme.Accent : hover ? Theme.BorderStrong : Theme.Border;
-            using (var pen = new Pen(border)) g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
-
-            TextRenderer.DrawText(g, Text, Font, new Rectangle(11, 0, Width - 40, Height), Theme.Text,
+            TextRenderer.DrawText(g, Text, Font, new Rectangle(14, 0, Width - 44, Height), Theme.Text,
                 TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
 
-            // chevron
-            int cx = Width - 20, cy = Height / 2;
-            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-            using var chevron = new Pen(Theme.TextMuted, 1.5F);
+            int cx = Width - 22, cy = Height / 2;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using var chevron = new Pen(Theme.TextMuted, 1.5F) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
             g.DrawLines(chevron, new[] { new Point(cx - 4, cy - 2), new Point(cx, cy + 2), new Point(cx + 4, cy - 2) });
         }
 
@@ -115,13 +117,13 @@ namespace ClassTrack.UI.Controls
 
             var menu = new ToolStripDropDownMenu
             {
-                Renderer = new DarkMenuRenderer(),
+                Renderer = new GlassMenuRenderer(),
                 ShowImageMargin = false,
                 ShowCheckMargin = false,
-                BackColor = Theme.Surface,
+                BackColor = Color.FromArgb(30, 32, 38),
                 Font = Font,
-                MinimumSize = new Size(Width, 0),
-                Padding = new Padding(0, 4, 0, 4)
+                MinimumSize = new Size(Width - 4, 0),
+                Padding = new Padding(4, 6, 4, 6)
             };
             for (int i = 0; i < items.Count; i++)
             {
@@ -129,8 +131,8 @@ namespace ClassTrack.UI.Controls
                 var item = new ToolStripMenuItem(items[i])
                 {
                     ForeColor = i == selectedIndex ? Theme.AccentSoft : Theme.Text,
-                    BackColor = Theme.Surface,
-                    Padding = new Padding(4, 5, 4, 5)
+                    BackColor = Color.FromArgb(30, 32, 38),
+                    Padding = new Padding(6, 6, 6, 6)
                 };
                 item.Click += (_, _) => SelectedIndex = index;
                 menu.Items.Add(item);
@@ -145,28 +147,32 @@ namespace ClassTrack.UI.Controls
 
             open = true;
             Invalidate();
-            menu.Show(this, new Point(0, Height + 2));
+            menu.Show(this, new Point(2, Height - 2));
         }
 
-        /// <summary>Flat dark look for the drop-down menu: hover highlight, hairline border.</summary>
-        private sealed class DarkMenuRenderer : ToolStripProfessionalRenderer
+        /// <summary>Flat dark look for the drop-down menu: rounded hover pill, hairline border.</summary>
+        private sealed class GlassMenuRenderer : ToolStripProfessionalRenderer
         {
             protected override void OnRenderToolStripBackground(ToolStripRenderEventArgs e)
             {
-                using var b = new SolidBrush(Theme.Surface);
+                using var b = new SolidBrush(Color.FromArgb(30, 32, 38));
                 e.Graphics.FillRectangle(b, e.AffectedBounds);
             }
 
             protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
             {
-                using var pen = new Pen(Theme.BorderStrong);
+                using var pen = new Pen(Color.FromArgb(70, 255, 255, 255));
                 e.Graphics.DrawRectangle(pen, 0, 0, e.ToolStrip.Width - 1, e.ToolStrip.Height - 1);
             }
 
             protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e)
             {
-                using var b = new SolidBrush(e.Item.Selected ? Theme.SurfaceHover : Theme.Surface);
-                e.Graphics.FillRectangle(b, new Rectangle(1, 0, e.Item.Width - 2, e.Item.Height));
+                if (!e.Item.Selected) return;
+                var g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                using var path = Glass.RoundedRect(new RectangleF(1, 1, e.Item.Width - 2, e.Item.Height - 2), 8);
+                using var b = new SolidBrush(Color.FromArgb(36, 255, 255, 255));
+                g.FillPath(b, path);
             }
 
             protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
