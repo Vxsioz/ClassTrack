@@ -6,7 +6,7 @@ using ClassTrack.UI.Controls;
 
 namespace ClassTrack.Views
 {
-    /// <summary>The student directory: search, course/year filters, sort, page, and per-row View / Edit / Delete.</summary>
+    /// <summary>The student directory: search, course/year filters, sort, page, and per-row View / Edit / Archive.</summary>
     public sealed class StudentsView : ViewBase
     {
         private const int PageSize = 10;
@@ -229,13 +229,13 @@ namespace ClassTrack.Views
 
             grid.Columns.Add(DarkGrid.LinkColumn("colView", "View", Theme.TextMuted));
             grid.Columns.Add(DarkGrid.LinkColumn("colEdit", "Edit", Theme.AccentSoft));
-            grid.Columns.Add(DarkGrid.LinkColumn("colDelete", "Delete", Theme.Danger));
+            grid.Columns.Add(DarkGrid.LinkColumn("colArchive", "Archive", Theme.Cyan));
 
             grid.CellContentClick += Grid_CellContentClick;
             grid.ColumnHeaderMouseClick += Grid_ColumnHeaderMouseClick;
             grid.CellDoubleClick += (_, e) =>
             {
-                if (e.RowIndex >= 0 && grid.Columns[e.ColumnIndex].Name is not ("colView" or "colEdit" or "colDelete"))
+                if (e.RowIndex >= 0 && grid.Columns[e.ColumnIndex].Name is not ("colView" or "colEdit" or "colArchive"))
                     StudentRequested?.Invoke(this, RowId(e.RowIndex));
             };
 
@@ -407,7 +407,7 @@ namespace ClassTrack.Views
             if (e.RowIndex < 0) return;
 
             string action = grid.Columns[e.ColumnIndex].Name;
-            if (action is not ("colView" or "colEdit" or "colDelete")) return;
+            if (action is not ("colView" or "colEdit" or "colArchive")) return;
 
             int id = RowId(e.RowIndex);
             if (action == "colView") { StudentRequested?.Invoke(this, id); return; }
@@ -422,8 +422,8 @@ namespace ClassTrack.Views
                 return;
             }
 
-            if (await actions.DeleteAsync(this, student))
-                await ReloadAsync();   // the page is clamped if the last row of a page was deleted
+            if (await actions.ArchiveAsync(this, student))
+                await ReloadAsync();   // the page is clamped if the last row of a page was archived
         }
 
         // =====================================================================

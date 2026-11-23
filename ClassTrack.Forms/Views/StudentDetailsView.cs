@@ -4,7 +4,7 @@ using ClassTrack.UI.Controls;
 
 namespace ClassTrack.Views
 {
-    /// <summary>One student's picture and saved information, organised into sections, with Edit and Delete.</summary>
+    /// <summary>One student's picture and saved information, organised into sections, with Edit and Archive.</summary>
     public sealed class StudentDetailsView : ViewBase
     {
         private const int PictureSize = 148;
@@ -51,12 +51,12 @@ namespace ClassTrack.Views
             back.Click += (_, _) => BackRequested?.Invoke(this, EventArgs.Empty);
             var edit = new FlatButton("Edit", ButtonKind.Primary) { Margin = new Padding(0, 0, 10, 0) };
             edit.Click += (_, _) => { if (current != null) EditRequested?.Invoke(this, current.Id); };
-            var delete = new FlatButton("Delete", ButtonKind.Danger);
-            delete.Click += async (_, _) => await DeleteAsync();
+            var archive = new FlatButton("Archive") { Icon = IconKind.Archive };
+            archive.Click += async (_, _) => await ArchiveAsync();
 
             bar.Controls.Add(back, 0, 0);
             bar.Controls.Add(edit, 2, 0);
-            bar.Controls.Add(delete, 3, 0);
+            bar.Controls.Add(archive, 3, 0);
             return bar;
         }
 
@@ -160,10 +160,10 @@ namespace ClassTrack.Views
             label.ForeColor = has ? Theme.Text : Theme.TextFaint;
         }
 
-        private async Task DeleteAsync()
+        private async Task ArchiveAsync()
         {
             if (current == null) return;
-            if (await actions.DeleteAsync(this, current))
+            if (await actions.ArchiveAsync(this, current))
             {
                 current = null;
                 BackRequested?.Invoke(this, EventArgs.Empty);

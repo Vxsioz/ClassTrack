@@ -2,7 +2,7 @@ using System.Drawing.Drawing2D;
 
 namespace ClassTrack.UI
 {
-    public enum IconKind { Dashboard, Students, AddUser, Settings, Search, ChevronLeft, ChevronRight, Plus, Folder }
+    public enum IconKind { Dashboard, Students, AddUser, Settings, Search, ChevronLeft, ChevronRight, Plus, Folder, Archive }
 
     /// <summary>Minimal line icons drawn as vector paths (no image files, crisp at any DPI).</summary>
     public static class Icons
@@ -67,6 +67,12 @@ namespace ClassTrack.UI
                 case IconKind.Plus:
                     g.DrawLine(pen, P(0.5f, 0.18f), P(0.5f, 0.82f));
                     g.DrawLine(pen, P(0.18f, 0.5f), P(0.82f, 0.5f));
+                    break;
+
+                case IconKind.Archive:
+                    using (var lid = Glass.RoundedRect(R(0.10f, 0.18f, 0.80f, 0.20f), s * 0.05f)) g.DrawPath(pen, lid);
+                    g.DrawLines(pen, new[] { P(0.17f, 0.38f), P(0.17f, 0.80f), P(0.83f, 0.80f), P(0.83f, 0.38f) });
+                    g.DrawLine(pen, P(0.40f, 0.55f), P(0.60f, 0.55f));
                     break;
 
                 case IconKind.Folder:

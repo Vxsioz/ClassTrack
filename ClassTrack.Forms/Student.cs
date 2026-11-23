@@ -33,6 +33,9 @@ namespace ClassTrack
         [StringLength(260)]
         public string? PhotoPath { get; set; }
 
+        /// <summary>When the student was archived; null for an active student. Archived records are hidden everywhere except the Archive page.</summary>
+        public DateTime? ArchivedAt { get; set; }
+
         public string FullName => $"{FirstName} {Surname}";
     }
 }

@@ -7,10 +7,11 @@ namespace ClassTrack.Data
         string? Search = null,
         string? Course = null,
         byte? YearLevel = null,
-        string SortBy = "Id",          // Id | FirstName | Surname | Course | YearLevel
+        string SortBy = "Id",          // Id | FirstName | Surname | Course | YearLevel | ArchivedAt
         bool Descending = false,
         int Page = 1,
-        int PageSize = 10);
+        int PageSize = 10,
+        bool Archived = false);        // false: active students (default); true: the Archive
 
     public sealed record StudentPage(List<Student> Items, int Total, int Page, int TotalPages);
 
@@ -84,7 +85,29 @@ namespace ClassTrack.Data
             return true;
         }
 
-        /// <summary>Deletes the student. Returns their PhotoPath so the caller can remove the file.</summary>
+        /// <summary>Moves a student to the Archive. Nothing is deleted: the record and picture are kept. False if they no longer exist.</summary>
+        public async Task<bool> ArchiveAsync(int id)
+        {
+            await using var db = new AppDbContext();
+            var tracked = await db.Students.FindAsync(id);
+            if (tracked == null) return false;
+            tracked.ArchivedAt = DateTime.Now;
+            await db.SaveChangesAsync();
+            return true;
+        }
+
+        /// <summary>Brings an archived student back to the directory. False if they no longer exist.</summary>
+        public async Task<bool> RestoreAsync(int id)
+        {
+            await using var db = new AppDbContext();
+            var tracked = await db.Students.FindAsync(id);
+            if (tracked == null) return false;
+            tracked.ArchivedAt = null;
+            await db.SaveChangesAsync();
+            return true;
+        }
+
+        /// <summary>PERMANENTLY deletes the student (used only from the Archive). Returns their PhotoPath so the caller can remove the file.</summary>
         public async Task<(bool Deleted, string? PhotoPath)> DeleteAsync(int id)
         {
             await using var db = new AppDbContext();
@@ -102,7 +125,7 @@ namespace ClassTrack.Data
         {
             await using var db = new AppDbContext();
             return await db.Students.AsNoTracking()
-                .Where(s => s.Course != null && s.Course != "")
+                .Where(s => s.ArchivedAt == null && s.Course != null && s.Course != "")
                 .Select(s => s.Course!).Distinct().OrderBy(c => c)
                 .ToListAsync();
         }
@@ -111,21 +134,23 @@ namespace ClassTrack.Data
         {
             await using var db = new AppDbContext();
 
-            int total = await db.Students.CountAsync();
+            var active = db.Students.Where(s => s.ArchivedAt == null);
 
-            var byCourse = await db.Students.AsNoTracking()
+            int total = await active.CountAsync();
+
+            var byCourse = await active.AsNoTracking()
                 .GroupBy(s => s.Course ?? "")
                 .Select(g => new { Course = g.Key, Count = g.Count() })
                 .OrderBy(x => x.Course == "").ThenByDescending(x => x.Count).ThenBy(x => x.Course)   // "Unassigned" last
                 .ToListAsync();
 
-            var byYear = await db.Students.AsNoTracking()
+            var byYear = await active.AsNoTracking()
                 .GroupBy(s => s.YearLevel)
                 .Select(g => new { Year = g.Key, Count = g.Count() })
                 .OrderBy(x => x.Year == null).ThenBy(x => x.Year)
                 .ToListAsync();
 
-            var recent = await db.Students.AsNoTracking()
+            var recent = await active.AsNoTracking()
                 .OrderByDescending(s => s.Id).Take(recentCount).ToListAsync();
 
             return new DashboardStats(
@@ -139,6 +164,7 @@ namespace ClassTrack.Data
 
         private static IQueryable<Student> ApplyFilters(IQueryable<Student> query, StudentQuery q)
         {
+            query = q.Archived ? query.Where(s => s.ArchivedAt != null) : query.Where(s => s.ArchivedAt == null);
             if (!string.IsNullOrWhiteSpace(q.Search))
             {
                 string t = q.Search.Trim();
@@ -169,6 +195,8 @@ namespace ClassTrack.Data
                 ("Course", true) => query.OrderByDescending(s => s.Course).ThenBy(s => s.Id),
                 ("YearLevel", false) => query.OrderBy(s => s.YearLevel).ThenBy(s => s.Id),
                 ("YearLevel", true) => query.OrderByDescending(s => s.YearLevel).ThenBy(s => s.Id),
+                ("ArchivedAt", false) => query.OrderBy(s => s.ArchivedAt).ThenBy(s => s.Id),
+                ("ArchivedAt", true) => query.OrderByDescending(s => s.ArchivedAt).ThenBy(s => s.Id),
                 (_, true) => query.OrderByDescending(s => s.Id),
                 _ => query.OrderBy(s => s.Id)
             };

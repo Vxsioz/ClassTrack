@@ -15,10 +15,12 @@ namespace ClassTrack
         private readonly StudentDetailsView details = new();
         private readonly StudentEditorView editor = new();
         private readonly SettingsView settings = new();
+        private readonly ArchiveView archive = new();
 
         private NavItem navDashboard = null!;
         private NavItem navStudents = null!;
         private NavItem navAdd = null!;
+        private NavItem navArchive = null!;
         private NavItem navSettings = null!;
         private readonly Label lblPageTitle = Ui.Text("", Theme.H2, Theme.Text);
         private readonly Label lblCrumb = Ui.Text("ClassTrack  /", Theme.Body, Theme.TextFaint);
@@ -57,7 +59,7 @@ namespace ClassTrack
 
             // ---------- Pages ----------
             var pageHost = new ClearPanel { Dock = DockStyle.Fill };
-            foreach (ViewBase view in new ViewBase[] { dashboard, students, details, editor, settings })
+            foreach (ViewBase view in new ViewBase[] { dashboard, students, details, editor, settings, archive })
             {
                 view.Visible = false;
                 pageHost.Controls.Add(view);
@@ -85,24 +87,27 @@ namespace ClassTrack
             navDashboard = new NavItem("Dashboard", IconKind.Dashboard) { Dock = DockStyle.Fill };
             navStudents = new NavItem("Students", IconKind.Students) { Dock = DockStyle.Fill };
             navAdd = new NavItem("Add student", IconKind.AddUser) { Dock = DockStyle.Fill };
+            navArchive = new NavItem("Archive", IconKind.Archive) { Dock = DockStyle.Fill };
             navSettings = new NavItem("Settings", IconKind.Settings) { Dock = DockStyle.Fill };
             navDashboard.Click += (_, _) => ShowDashboard();
             navStudents.Click += (_, _) => ShowStudents();
             navAdd.Click += async (_, _) => await ShowEditor(null, () => ShowStudents());
+            navArchive.Click += (_, _) => ShowView(archive, navArchive, "Archive");
             navSettings.Click += (_, _) => ShowView(settings, navSettings, "Settings");
 
             var sidebar = new GlassPanel { Dock = DockStyle.Left, Width = 244, Padding = new Padding(14, 18, 14, 14), Radius = 26 };
-            var stack = new TablePanel { BackColor = Color.Transparent, Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 7 };
+            var stack = new TablePanel { BackColor = Color.Transparent, Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 8 };
             for (int i = 0; i < 6; i++) stack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             stack.RowStyles[1] = new RowStyle(SizeType.Absolute, 22F);                 // gap under the logo
             stack.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            // rows: 0 logo | 1 gap | 2 dashboard | 3 students | 4 add | 5 (filler) | 6 settings
+            // rows: 0 logo | 1 gap | 2 dashboard | 3 students | 4 add | 5 archive | 6 (filler) | 7 settings
             stack.RowStyles.Clear();
             stack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             stack.RowStyles.Add(new RowStyle(SizeType.Absolute, 22F));
             stack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             stack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             stack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            stack.RowStyles.Add(new RowStyle(SizeType.AutoSize));   // archive
             stack.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             stack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
@@ -111,7 +116,8 @@ namespace ClassTrack
             stack.Controls.Add(navDashboard, 0, 2);
             stack.Controls.Add(navStudents, 0, 3);
             stack.Controls.Add(navAdd, 0, 4);
-            stack.Controls.Add(navSettings, 0, 6);
+            stack.Controls.Add(navArchive, 0, 5);
+            stack.Controls.Add(navSettings, 0, 7);
             sidebar.Controls.Add(stack);
             return sidebar;
         }
@@ -213,7 +219,8 @@ namespace ClassTrack
             details.Visible = view == details;
             editor.Visible = view == editor;
             settings.Visible = view == settings;
-            foreach (var item in new[] { navDashboard, navStudents, navAdd, navSettings }) item.Active = item == nav;
+            archive.Visible = view == archive;
+            foreach (var item in new[] { navDashboard, navStudents, navAdd, navArchive, navSettings }) item.Active = item == nav;
             lblPageTitle.Text = title;
             Text = $"{title} - ClassTrack";
             view.PlayEntrance();
